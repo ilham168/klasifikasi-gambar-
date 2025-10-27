@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klasifikasi Gambar Deep Learning</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        #image-preview {
+            max-width: 100%;
+            height: auto;
+            margin-top: 15px;
+            border: 1px solid #ddd;
+            display: none; /* Sembunyikan sampai gambar diunggah */
+            border-radius: 4px;
+        }
+        #result-text {
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Model Klasifikasi hewan dan transport Sederhana</h2>
+        <p>Unggah gambar (32x32 piksel lebih disarankan) untuk diklasifikasikan.</p>
+        
+        <input type="file" id="image-input" accept="image/*" onchange="previewImage()">
+        
+        <button onclick="classifyImage()" id="classify-btn" disabled>Klasifikasikan Gambar</button>
+        
+        <div class="loader" id="loader"></div>
+        
+        <img id="image-preview" alt="Pratinjau Gambar">
+        <p id="result-text">Hasil akan ditampilkan di sini.</p>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:5000/predict";
+        const imageInput = document.getElementById('image-input');
+        const imagePreview = document.getElementById('image-preview');
+        const resultText = document.getElementById('result-text');
+        const loader = document.getElementById('loader');
+        const classifyBtn = document.getElementById('classify-btn');
+
+        // Fungsi untuk menampilkan pratinjau gambar dan mengaktifkan tombol
+        function previewImage() {
+            const file = imageInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    classifyBtn.disabled = false; // Aktifkan tombol
+                    resultText.textContent = "Tekan tombol untuk klasifikasi.";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.style.display = 'none';
+                imagePreview.src = '';
+                classifyBtn.disabled = true; // Nonaktifkan tombol
+                resultText.textContent = "Hasil akan ditampilkan di sini.";
+            }
+        }
+
+        // Fungsi untuk mengirim gambar ke API Flask
+        async function classifyImage() {
+            const file = imageInput.files[0];
+            if (!file) {
+                alert("Silakan pilih gambar terlebih dahulu.");
+                return;
+            }
+
+            // Tampilkan loader dan nonaktifkan tombol
+            loader.style.display = 'block';
+            classifyBtn.disabled = true;
+            resultText.textContent = "Menganalisis gambar...";
+
+            // Siapkan data form-data
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                // Lakukan permintaan POST ke API
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                // Tampilkan hasil
+                const prediction = result.prediction.toUpperCase();
+                const confidence = result.confidence;
+                
+                resultText.innerHTML = `Hasil Klasifikasi: Ini adalah **${prediction}**<br>Keyakinan: ${confidence}`;
+                resultText.style.color = '#007bff';
+
+            } catch (error) {
+                console.error('Error saat klasifikasi:', error);
+                resultText.textContent = `ERROR: Gagal terhubung ke API atau error server. (${error.message})`;
+                resultText.style.color = 'red';
+            } finally {
+                // Sembunyikan loader dan aktifkan kembali tombol
+                loader.style.display = 'none';
+                classifyBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
